@@ -64,7 +64,7 @@ def main():
     
         compressed_size = getsizeof(byte_im)
         
-        # Displaying the image
+        # Displaying the compressed image
         st.write('compressed size: ', compressed_size)
         st.image(image_recovered, caption='Compressed Image', clamp=True)
 
