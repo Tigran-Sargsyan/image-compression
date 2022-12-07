@@ -1,8 +1,8 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.cluster import KMeans
 
+from sklearn.cluster import KMeans
 from PIL import Image
 from io import BytesIO
 from sys import getsizeof
