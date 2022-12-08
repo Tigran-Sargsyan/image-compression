@@ -33,7 +33,7 @@ def main():
         st.sidebar.write('Array shape: ', image.shape)
 
         # Displaying the image
-        st.write('Initial size: ', initial_size)
+        st.write(f'Initial size: {initial_size / 1000} kilobytes.')
         st.image(image, caption='Initial Image', clamp=True)
         
         # Image resizing
@@ -48,6 +48,7 @@ def main():
         # Variables for showing the progress
         progress_bar = st.progress(0.0)
         percent_complete = 0
+        placeholder = st.empty()
 
         # Running the algorithm
         start = time()
@@ -56,14 +57,14 @@ def main():
 
         for k in range(start_k, end_k):
             percent_complete = (k - 1) / (12 - 2) 
-            print(percent_complete)
             image_recovered, byte_im = compress(image, k, max_iters, resized_image)
             compressed_size[k] = getsizeof(byte_im) / 1000
             progress_bar.progress(percent_complete)
+            placeholder.text(f'Progress: {int(percent_complete * 100)}/100')
 
         end = time()
         st.write(f'The program executed in {end-start:.2f} seconds.')
-        st.write('Compressed size: ', compressed_size.get(end_k - 1))
+        st.write(f'Compressed size: {compressed_size.get(end_k - 1)} kilobytes.')
 
         # Displaying the compressed image
         st.sidebar.write('Compressed size dictionary: ', compressed_size)
