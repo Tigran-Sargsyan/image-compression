@@ -26,7 +26,7 @@ def main():
         initial_size = getsizeof(img_file_buffer)
     
         # Converting an image to numpy array
-        image = plt.imread(img_file_buffer).astype(np.uint8)
+        image = plt.imread(img_file_buffer)#.astype(np.uint8)
                
         # Shape of the numpy array representing the image 
         st.sidebar.header('Additional Information')
@@ -38,12 +38,13 @@ def main():
         
         # Image resizing
         image = image / 255
+        print('image:\n', image)
         resized_image = image.reshape(image.shape[0] * image.shape[1], image.shape[2])
         
         # Parameter initialization for kMeans
 
         #k = st.slider('Choose the k in kMeans',0,30,10)
-        max_iters = 15
+        max_iters = 100
 
         # Variables for showing the progress
         progress_bar = st.progress(0.0)
@@ -53,10 +54,10 @@ def main():
         # Running the algorithm
         start = time()
         start_k = 2
-        end_k = 12
+        end_k = 6
 
         for k in range(start_k, end_k):
-            percent_complete = (k - 1) / (12 - 2) 
+            percent_complete = (k - 1) / (end_k - 2) 
             image_recovered, byte_im = compress(image, k, max_iters, resized_image)
             compressed_size[k] = getsizeof(byte_im) / 1000
             progress_bar.progress(percent_complete)
@@ -81,19 +82,7 @@ def main():
         sizes = pd.Series(compressed_size)
 
         # Plotting the graph for different values of k
-        fig,ax = plt.subplots(figsize=(4,2))
-        ax.plot(sizes)
-        ax.axhline(initial_size / 1000, color='red', label='initial size')
-
-        ax.set_xlabel('k in kMeans')
-        ax.set_ylabel('kilobytes')
-        ax.set_title('Compressed image sizes')
-        ax.set_xticks(range(2,11))
-
-        plt.legend()
-        plt.tight_layout()
-        
-        st.pyplot(fig)
+        plot_graph(sizes, initial_size, start_k, end_k)
 
 def compress(image, k, max_iters, resized_image):
     kmeans = KMeans(n_clusters=k, random_state=0, max_iter=max_iters).fit(resized_image)
@@ -106,17 +95,34 @@ def compress(image, k, max_iters, resized_image):
     # Reshaping recovered image into proper dimensions and getting back to the proper shape
     image_recovered = image_recovered.reshape(image.shape)
     image_recovered = (image_recovered * 255).astype(np.uint8)
-    #image_recovered = image_recovered * 255 
             
     # Converting ndarray to image
+    print('image_recovered:\n', image_recovered)
+    #im_download = image_recovered#.astype(np.uint8)
     im = Image.fromarray(image_recovered, mode='RGB')
+    #im = Image.fromarray(im_download, mode='RGB')
 
     # Converting image to bytes
     buf = BytesIO()
     im.save(buf, format='jpeg')
+    #im.save(buf, format='png')
     byte_im = buf.getvalue()
-        
+    
     return image_recovered, byte_im
+
+def plot_graph(sizes, initial_size, start_k, end_k):
+    fig,ax = plt.subplots(figsize=(4,2))
+    ax.plot(sizes)
+    ax.axhline(initial_size / 1000, color='red', label='initial size')
+    ax.set_xlabel('k in kMeans')
+    ax.set_ylabel('kilobytes')
+    ax.set_title('Compressed image sizes')
+    ax.set_xticks(range(start_k, end_k))
+
+    plt.legend()
+    plt.tight_layout()
+    
+    st.pyplot(fig)
 
 if __name__ == '__main__':
     main()
