@@ -16,14 +16,14 @@ def main():
     st.header('Image Compression')
     st.write('This tool compresses your image in size, preserving the most important colors\
     using k-Means algorithm.')
+
     img_file_buffer = st.file_uploader('Upload an image', type=['png','jpg'])
 
     if img_file_buffer is not None:
         # Initializing dicts for holding initial and post-kMeans bytsizes and images for different k-s
-        initial_size = 0
         compressed_sizes = {}
         compressed_percents = {}
-        images = {}
+        compressed_images = {}
         
         initial_size = getsizeof(img_file_buffer)
     
@@ -44,8 +44,6 @@ def main():
         resized_image = resized_image.reshape(image.shape[0] * image.shape[1], image.shape[2])
         
         # Parameter initialization for kMeans
-
-        #k = st.slider('Choose the k in kMeans',0,30,10)
         max_iters = 100
 
         # Variables for showing the progress
@@ -60,11 +58,11 @@ def main():
 
         for k in range(start_k, end_k):
             percent_complete = (k - 1) / (end_k - 2) 
-            image_recovered, byte_im = compress(image, k, max_iters, resized_image)
+            compressed_image, byte_im = compress(image, k, max_iters, resized_image)
             current_size = getsizeof(byte_im)
             compressed_sizes[k] = current_size
             compressed_percents[k] = f'{((current_size - initial_size) * 100) / initial_size:.2f}%'
-            images[k] = image_recovered
+            compressed_images[k] = compressed_image
             progress_bar.progress(percent_complete)
             placeholder.text(f'Progress: {int(percent_complete * 100)}/100')
 
@@ -83,7 +81,7 @@ def main():
 
         with col2:
             st.subheader('Compressed Image')
-            st.image(image_recovered, caption='Compressed', clamp=True)
+            st.image(compressed_image, caption='Compressed', clamp=True)
 
         file_name = '.'.join((img_file_buffer.name).split('.')[:-1])
 
@@ -100,33 +98,57 @@ def main():
         # Plotting the graph for different values of k
         plot_graph(sizes, initial_size, start_k, end_k)
 
-def compress(image, k, max_iters, resized_image):
+def compress(resized_image, initial_image_shape, k, max_iters):
+    """Compresses an image using kMeans algorithm
+
+    Args:
+        resized_image (ndarray): The resized 2D representation of inital 3D image
+        initial_image_shape (tuple): The shape of the inital image for recovery
+        k (int): Number of clusters in kMeans
+        max_iters: Number of maximum iterations in kMeans
+
+    Returns:
+        compressed_image (ndarray): Compressed image of appropriate (initial) size
+        byte_im (byteIO): Byte represenation of the compressed image 
+    
+    """
+
     kmeans = KMeans(n_clusters=k, random_state=0, max_iter=max_iters).fit(resized_image)
     idx = kmeans.predict(resized_image)
     centroids = kmeans.cluster_centers_
 
     # Representing the image in terms of indices
-    image_recovered = centroids[idx, :] 
+    compressed_image = centroids[idx, :] 
 
     # Reshaping recovered image into proper dimensions and getting back to the proper shape
-    image_recovered = image_recovered.reshape(image.shape)
-    image_recovered = (image_recovered * 255).astype(np.uint8)
+    compressed_image = compressed_image.reshape(initial_image_shape)
+    compressed_image = (compressed_image * 255).astype(np.uint8)
             
     # Converting ndarray to image
-    print('image_recovered:\n', image_recovered)
-    #im_download = image_recovered#.astype(np.uint8)
-    im = Image.fromarray(image_recovered, mode='RGB')
-    #im = Image.fromarray(im_download, mode='RGB')
+    print('compressed_image:\n', compressed_image)
+    im = Image.fromarray(compressed_image, mode='RGB')
 
     # Converting image to bytes
     buf = BytesIO()
     im.save(buf, format='jpeg')
-    #im.save(buf, format='png')
     byte_im = buf.getvalue()
     
-    return image_recovered, byte_im
+    return compressed_image, byte_im
 
 def plot_graph(sizes, initial_size, start_k, end_k):
+    """Plots the graph of sizes per different numbers of clusters
+    
+    Args:
+        sizes (float): Sizes of the byte representations of the compressed images
+        initial_size (float): The byte size of the original image
+        start_k (int): The starting value of clusters for plotting  
+        end_k (int): The ending value of cluster for plotting
+
+    Returns:
+        None
+
+    """
+
     fig,ax = plt.subplots(figsize=(4,2))
     ax.plot(sizes)
     ax.axhline(initial_size / 1000, color='red', label='initial size')
