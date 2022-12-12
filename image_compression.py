@@ -19,9 +19,11 @@ def main():
     img_file_buffer = st.file_uploader('Upload an image', type=['png','jpg'])
 
     if img_file_buffer is not None:
-        # Initializing dicts for holding initial and post-kMeans bytsizes
+        # Initializing dicts for holding initial and post-kMeans bytsizes and images for different k-s
         initial_size = 0
-        compressed_size = {}
+        compressed_sizes = {}
+        compressed_percents = {}
+        images = {}
         
         initial_size = getsizeof(img_file_buffer)
     
@@ -37,9 +39,9 @@ def main():
         st.image(image, caption='Initial Image', clamp=True)
         
         # Image resizing
-        image = image / 255
+        resized_image = image / 255
         print('image:\n', image)
-        resized_image = image.reshape(image.shape[0] * image.shape[1], image.shape[2])
+        resized_image = resized_image.reshape(image.shape[0] * image.shape[1], image.shape[2])
         
         # Parameter initialization for kMeans
 
@@ -59,27 +61,41 @@ def main():
         for k in range(start_k, end_k):
             percent_complete = (k - 1) / (end_k - 2) 
             image_recovered, byte_im = compress(image, k, max_iters, resized_image)
-            compressed_size[k] = getsizeof(byte_im) / 1000
+            current_size = getsizeof(byte_im)
+            compressed_sizes[k] = current_size
+            compressed_percents[k] = f'{((current_size - initial_size) * 100) / initial_size:.2f}%'
+            images[k] = image_recovered
             progress_bar.progress(percent_complete)
             placeholder.text(f'Progress: {int(percent_complete * 100)}/100')
 
         end = time()
         st.write(f'The program executed in {end-start:.2f} seconds.')
-        st.write(f'Compressed size: {compressed_size.get(end_k - 1)} kilobytes.')
+        st.write(f'Current compression benefit in percents: {compressed_percents.get(end_k - 1)}')
 
-        # Displaying the compressed image
-        st.sidebar.write('Compressed size dictionary: ', compressed_size)
-        st.image(image_recovered, caption='Compressed Image', clamp=True)
+        st.sidebar.write('Compressed size dictionary: ', compressed_percents)
+
+        # Displaying the original and compressed images side by side
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader('Original Image')
+            st.image(image, caption='Original', clamp=True)
+
+        with col2:
+            st.subheader('Compressed Image')
+            st.image(image_recovered, caption='Compressed', clamp=True)
+
+        file_name = '.'.join((img_file_buffer.name).split('.')[:-1])
 
         # Download button for user
         btn = st.download_button(
             label = 'Download the image',
             data = byte_im,
-            file_name = f'{k}.jpeg',
+            file_name = f'{file_name}_{k}.jpeg',
             mime = f'image/jpeg'
         )
 
-        sizes = pd.Series(compressed_size)
+        sizes = pd.Series(compressed_sizes)
 
         # Plotting the graph for different values of k
         plot_graph(sizes, initial_size, start_k, end_k)
