@@ -2,7 +2,8 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-plt.style.use('seaborn-whitegrid')
+import cv2
+plt.style.use('seaborn-v0_8-darkgrid')
 
 from joblib import Parallel, delayed
 from time import time
@@ -13,36 +14,55 @@ from sys import getsizeof
 
 def main():
     st.set_page_config(layout='wide')
-    st.header('Image Compression')
+    st.title('Image Compression')
     st.write('This tool compresses your image in size, preserving the most important colors\
     using k-Means algorithm.')
 
     img_file_buffer = st.file_uploader('Upload an image', type=['png','jpg'])
 
     if img_file_buffer is not None:
-        # Initializing dicts for holding initial and post-kMeans bytsizes and images for different k-s
+        # Dictionary initialization
+        compressed_images = {}
+        compressed_bytes = {}   # byte representation of the ndarray images for downloading
         compressed_sizes = {}
         compressed_percents = {}
-        compressed_images = {}
         
+        # Keeping the original image size for calculating the percentage benefit
         initial_size = getsizeof(img_file_buffer)
+        print('size: ', initial_size)
     
         # Converting an image to numpy array
+        bytes_data = img_file_buffer.getvalue()
         image = plt.imread(img_file_buffer)#.astype(np.uint8)
-               
+        image_shape = image.shape 
+
+        # Keeping name and type of the image
+        file_name = (img_file_buffer.name).split('.')
+        name = '.'.join(file_name[:-1])
+        image_type = file_name[-1]
+        if image_type in ['JPG','jpg','JPEG']:
+            image_type = 'jpeg'
+
         # Shape of the numpy array representing the image 
         st.sidebar.header('Additional Information')
         st.sidebar.write('Array shape: ', image.shape)
 
         # Displaying the image
         st.write(f'Initial size: {initial_size / 1000} kilobytes.')
-        st.image(image, caption='Initial Image', clamp=True)
+        st.image(image, caption='Original', clamp=True)
         
-        # Image resizing
-        resized_image = image / 255
+        # Image resizing and pixel normalization
+        if image_type == 'jpeg':
+            # So that the range of the pixels is [0,1]
+            resized_image = image / 255
+        elif image_type == 'png':
+            # The range is already in [0,1] for png images so we don't need to divide
+            resized_image = image
+
         print('image:\n', image)
+        # 3D -> 2D conversion for kMeans
         resized_image = resized_image.reshape(image.shape[0] * image.shape[1], image.shape[2])
-        
+
         # Parameter initialization for kMeans
         max_iters = 100
 
@@ -54,15 +74,18 @@ def main():
         # Running the algorithm
         start = time()
         start_k = 2
-        end_k = 6
+        end_k = 10
 
         for k in range(start_k, end_k):
             percent_complete = (k - 1) / (end_k - 2) 
-            compressed_image, byte_im = compress(image, k, max_iters, resized_image)
+            compressed_image, byte_im = compress(resized_image, image_type, image_shape, k, max_iters)
             current_size = getsizeof(byte_im)
-            compressed_sizes[k] = current_size
-            compressed_percents[k] = f'{((current_size - initial_size) * 100) / initial_size:.2f}%'
+
             compressed_images[k] = compressed_image
+            compressed_bytes[k] = byte_im
+            compressed_sizes[k] = current_size / 1000 
+            compressed_percents[k] = f'{((current_size - initial_size) * 100) / initial_size:.2f}%'
+
             progress_bar.progress(percent_complete)
             placeholder.text(f'Progress: {int(percent_complete * 100)}/100')
 
@@ -71,6 +94,9 @@ def main():
         st.write(f'Current compression benefit in percents: {compressed_percents.get(end_k - 1)}')
 
         st.sidebar.write('Compressed size dictionary: ', compressed_percents)
+
+        st.header('Original vs Compressed for different values of k')
+        preferred_k = st.slider('Choose the k in kMeans: ', 2, end_k - 1, end_k - 1)
 
         # Displaying the original and compressed images side by side
         col1, col2 = st.columns(2)
@@ -81,16 +107,14 @@ def main():
 
         with col2:
             st.subheader('Compressed Image')
-            st.image(compressed_image, caption='Compressed', clamp=True)
-
-        file_name = '.'.join((img_file_buffer.name).split('.')[:-1])
+            st.image(compressed_images[preferred_k], caption='Compressed', clamp=True)
 
         # Download button for user
         btn = st.download_button(
             label = 'Download the image',
-            data = byte_im,
-            file_name = f'{file_name}_{k}.jpeg',
-            mime = f'image/jpeg'
+            data = compressed_bytes.get(preferred_k),
+            file_name = f'{name}_{preferred_k}.{image_type}',
+            mime = f'image/{image_type}'
         )
 
         sizes = pd.Series(compressed_sizes)
@@ -98,7 +122,8 @@ def main():
         # Plotting the graph for different values of k
         plot_graph(sizes, initial_size, start_k, end_k)
 
-def compress(resized_image, initial_image_shape, k, max_iters):
+@st.cache(show_spinner=False)
+def compress(resized_image, image_type, initial_image_shape, k, max_iters):
     """Compresses an image using kMeans algorithm
 
     Args:
@@ -113,7 +138,7 @@ def compress(resized_image, initial_image_shape, k, max_iters):
     
     """
 
-    kmeans = KMeans(n_clusters=k, random_state=0, max_iter=max_iters).fit(resized_image)
+    kmeans = KMeans(n_clusters=k, max_iter=max_iters).fit(resized_image)
     idx = kmeans.predict(resized_image)
     centroids = kmeans.cluster_centers_
 
@@ -127,10 +152,10 @@ def compress(resized_image, initial_image_shape, k, max_iters):
     # Converting ndarray to image
     print('compressed_image:\n', compressed_image)
     im = Image.fromarray(compressed_image, mode='RGB')
-
+  
     # Converting image to bytes
     buf = BytesIO()
-    im.save(buf, format='jpeg')
+    im.save(buf, format=image_type)
     byte_im = buf.getvalue()
     
     return compressed_image, byte_im
