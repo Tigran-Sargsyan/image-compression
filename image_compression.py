@@ -1,14 +1,13 @@
-import streamlit as st
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import cv2
+import matplotlib.pyplot as plt
 plt.style.use('seaborn-v0_8-darkgrid')
-
-from joblib import Parallel, delayed
-from time import time
-from sklearn.cluster import KMeans
+ 
+import streamlit as st
 from PIL import Image
+from sklearn.cluster import KMeans
+
+from time import time
 from io import BytesIO
 from sys import getsizeof
 
@@ -22,14 +21,13 @@ def main():
 
     if img_file_buffer is not None:
         # Dictionary initialization
-        compressed_images = {}
+        compressed_images = {} 
         compressed_bytes = {}   # byte representation of the ndarray images for downloading
         compressed_sizes = {}
         compressed_percents = {}
         
         # Keeping the original image size for calculating the percentage benefit
         initial_size = getsizeof(img_file_buffer)
-        print('size: ', initial_size)
     
         # Converting an image to numpy array
         bytes_data = img_file_buffer.getvalue()
@@ -45,7 +43,7 @@ def main():
 
         # Shape of the numpy array representing the image 
         st.sidebar.header('Additional Information')
-        st.sidebar.write('Array shape: ', image.shape)
+        st.sidebar.write('Image shape: ', image.shape)
 
         # Displaying the image
         st.write(f'Initial size: {initial_size / 1000} kilobytes.')
@@ -59,8 +57,7 @@ def main():
             # The range is already in [0,1] for png images so we don't need to divide
             resized_image = image
 
-        print('image:\n', image)
-        # 3D -> 2D conversion for kMeans
+        # 3 dimension -> 2 dimension conversion for kMeans
         resized_image = resized_image.reshape(image.shape[0] * image.shape[1], image.shape[2])
 
         # Parameter initialization for kMeans
@@ -74,7 +71,7 @@ def main():
         # Running the algorithm
         start = time()
         start_k = 2
-        end_k = 10
+        end_k = 17
 
         for k in range(start_k, end_k):
             percent_complete = (k - 1) / (end_k - 2) 
@@ -150,7 +147,6 @@ def compress(resized_image, image_type, initial_image_shape, k, max_iters):
     compressed_image = (compressed_image * 255).astype(np.uint8)
             
     # Converting ndarray to image
-    print('compressed_image:\n', compressed_image)
     im = Image.fromarray(compressed_image, mode='RGB')
   
     # Converting image to bytes
