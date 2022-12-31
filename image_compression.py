@@ -70,8 +70,8 @@ def main():
 
         # Running the algorithm
         start = time()
-        start_k = 2
-        end_k = 17
+        start_k = 3
+        end_k = 11
 
         for k in range(start_k, end_k):
             percent_complete = (k - 1) / (end_k - 2) 
