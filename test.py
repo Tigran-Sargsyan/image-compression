@@ -63,35 +63,37 @@ def main():
         resized_image = resized_image.reshape(image.shape[0] * image.shape[1], image.shape[2])
 
         # Variables for showing the progress
-        progress_bar = st.progress(0.0)
-        percent_complete = 0
-        placeholder = st.empty()
+        #progress_bar = st.progress(0.0)
+        #percent_complete = 0
+        #placeholder = st.empty()
 
         # Running the algorithm
         start = time()
         start_k = 2
         end_k = 12
+        diff = end_k - start_k
         k = start_k
 
+        #Getting ready a tuple for multiprocessing using starmap
         k_list = list(range(start_k,end_k))
-        diff = end_k - start_k
         image_type_lst = [image_type] * diff
         resized_image_lst = [resized_image] * diff
         image_shape_lst = [image_shape] * diff
-        args = [*zip(resized_image_lst,image_type_lst,image_shape_lst,k_list)]
-        results = compressHelper(args)
+        args = (*zip(resized_image_lst,image_type_lst,image_shape_lst,k_list),)
 
-        for compressed_image, byte_im in list(results):
-            #percent_complete = (k - 1) / (end_k - 2) 
-            #compressed_image, byte_im = compres(resized_image, image_type, image_shape, k)
+        results = list(compressHelper(args))
+
+        for compressed_image, byte_im in results:
+            #percent_complete = (k - 1) / (end_k - 2)  
+            #compressed_image, byte_im = compress(resized_image, image_type, image_shape, k)
             current_size = getsizeof(byte_im)
-
+ 
             compressed_images[k] = compressed_image
             compressed_bytes[k] = byte_im
             compressed_sizes[k] = current_size / 1000 
             compressed_percents[k] = f'{((current_size - initial_size) * 100) / initial_size:.2f}%'
 
-            placeholder.text(f'Progress: {int(percent_complete * 100)}/100')
+            #placeholder.text(f'Progress: {int(percent_complete * 100)}/100')
             k += 1
 
         end = time()
@@ -129,16 +131,26 @@ def main():
 
 @st.cache(show_spinner=False)
 def compressHelper(args):
+    """Helper of compress to handle caching problems arising from direct call of compress
+    
+    Args:
+        args (tuple): arguments for compress (resized_image, image_type, ...)
+    
+    Returns:
+        results (list): A list containing compressed images for different values of k
+
+    """
+
+    #For accessing all CPU cores
     num_workers = mp.cpu_count()  
 
-    results = []
+    #multiprocessing using Pool and starmap
     pool = mp.Pool(num_workers)
     results = pool.starmap(compress, iterable=args)
 
     pool.close()
     pool.join()
-    #with Pool(processes=10) as mp_pool:
-     #   results = mp_pool.starmap(compress, iterable = args)
+    
     return results
 
 @st.cache(show_spinner=False)
@@ -149,17 +161,16 @@ def compress(resized_image, image_type, initial_image_shape, k):
         resized_image (ndarray): The resized 2D representation of inital 3D image
         initial_image_shape (tuple): The shape of the inital image for recovery
         k (int): Number of clusters in kMeans
-        max_iters: Number of maximum iterations in kMeans
 
     Returns:
         compressed_image (ndarray): Compressed image of appropriate (initial) size
         byte_im (byteIO): Byte represenation of the compressed image 
     
     """
-
+ 
     max_iters = 100
     resized_image = np.array(resized_image)
-    kmeans = KMeans(n_clusters=k, max_iter=max_iters, n_init=10).fit(resized_image)
+    kmeans = KMeans(n_clusters=k, max_iter=max_iters, n_init=1).fit(resized_image)
     idx = kmeans.predict(resized_image)
     centroids = kmeans.cluster_centers_
 
@@ -178,7 +189,7 @@ def compress(resized_image, image_type, initial_image_shape, k):
     im.save(buf, format=image_type)
     byte_im = buf.getvalue()
     print('k =', k)
-    
+
     return compressed_image, byte_im
 
 def plot_graph(sizes, initial_size, start_k, end_k):
