@@ -7,6 +7,7 @@ import streamlit as st
 from PIL import Image
 from sklearn.cluster import KMeans
 from multiprocessing import Pool
+import multiprocessing as mp
 
 from time import time
 from io import BytesIO
@@ -128,8 +129,16 @@ def main():
 
 @st.cache(show_spinner=False)
 def compressHelper(args):
-    with Pool(processes=10) as mp_pool:
-        results = mp_pool.starmap(compress, iterable = args)
+    num_workers = mp.cpu_count()  
+
+    results = []
+    pool = mp.Pool(num_workers)
+    results = pool.starmap(compress, iterable=args)
+
+    pool.close()
+    pool.join()
+    #with Pool(processes=10) as mp_pool:
+     #   results = mp_pool.starmap(compress, iterable = args)
     return results
 
 @st.cache(show_spinner=False)
