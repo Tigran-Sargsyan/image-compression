@@ -6,6 +6,7 @@ plt.style.use('seaborn-v0_8-darkgrid')
 import streamlit as st
 from PIL import Image
 from sklearn.cluster import KMeans
+from multiprocessing import Pool
 
 from time import time
 from io import BytesIO
@@ -60,9 +61,6 @@ def main():
         # 3 dimension -> 2 dimension conversion for kMeans
         resized_image = resized_image.reshape(image.shape[0] * image.shape[1], image.shape[2])
 
-        # Parameter initialization for kMeans
-        max_iters = 100
-
         # Variables for showing the progress
         progress_bar = st.progress(0.0)
         percent_complete = 0
@@ -72,10 +70,20 @@ def main():
         start = time()
         start_k = 2
         end_k = 12
+        k = start_k
 
-        for k in range(start_k, end_k):
-            percent_complete = (k - 1) / (end_k - 2) 
-            compressed_image, byte_im = compress(resized_image, image_type, image_shape, k, max_iters)
+        k_list = list(range(start_k,end_k))
+        diff = end_k - start_k
+        image_type_lst = [image_type] * diff
+        resized_image_lst = [resized_image] * diff
+        image_shape_lst = [image_shape] * diff
+        args = [*zip(resized_image_lst,image_type_lst,image_shape_lst,k_list)]
+        with Pool() as mp_pool:
+            results = mp_pool.starmap_async(compress, iterable = args) #resized_image_lst, image_type_lst, image_shape_lst, k_list)
+
+        for compressed_image, byte_im in list(results):
+            #percent_complete = (k - 1) / (end_k - 2) 
+            #compressed_image, byte_im = compres(resized_image, image_type, image_shape, k)
             current_size = getsizeof(byte_im)
 
             compressed_images[k] = compressed_image
@@ -83,8 +91,9 @@ def main():
             compressed_sizes[k] = current_size / 1000 
             compressed_percents[k] = f'{((current_size - initial_size) * 100) / initial_size:.2f}%'
 
-            progress_bar.progress(percent_complete)
+            #progress_bar.progress(percent_complete)
             placeholder.text(f'Progress: {int(percent_complete * 100)}/100')
+            k += 1
 
         end = time()
         st.write(f'The program executed in {end-start:.2f} seconds.')
@@ -120,7 +129,7 @@ def main():
         plot_graph(sizes, initial_size, start_k, end_k)
 
 @st.cache(show_spinner=False)
-def compress(resized_image, image_type, initial_image_shape, k, max_iters):
+def compress(resized_image, image_type, initial_image_shape, k):
     """Compresses an image using kMeans algorithm
 
     Args:
@@ -135,7 +144,9 @@ def compress(resized_image, image_type, initial_image_shape, k, max_iters):
     
     """
 
-    kmeans = KMeans(n_clusters=k, max_iter=max_iters).fit(resized_image)
+    max_iters = 100
+    resized_image = np.array(resized_image)
+    kmeans = KMeans(n_clusters=k, max_iter=max_iters, n_init=10).fit(resized_image)
     idx = kmeans.predict(resized_image)
     centroids = kmeans.cluster_centers_
 
@@ -153,6 +164,7 @@ def compress(resized_image, image_type, initial_image_shape, k, max_iters):
     buf = BytesIO()
     im.save(buf, format=image_type)
     byte_im = buf.getvalue()
+    print('k = ', k)
     
     return compressed_image, byte_im
 
