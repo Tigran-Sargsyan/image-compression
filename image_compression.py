@@ -34,7 +34,12 @@ def main():
         # Converting an image to numpy array
         bytes_data = img_file_buffer.getvalue()
         image = plt.imread(img_file_buffer)#.astype(np.uint8)
-        image_shape = image.shape 
+        image_shape = image.shape
+        
+        # For solving problems arising with RGBA (maybe) 
+        if image_shape[-1] == 4:
+            image = image[:,:,:-1]
+        image_shape = image.shape
 
         # Keeping name and type of the image
         file_name = (img_file_buffer.name).split('.')
