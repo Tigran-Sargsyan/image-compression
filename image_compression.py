@@ -193,7 +193,7 @@ def compress(resized_image, image_type, initial_image_shape, k):
     buf = BytesIO()
     im.save(buf, format=image_type)
     byte_im = buf.getvalue()
-    print('k =', k)
+    print('kMeans k =', k)
 
     return compressed_image, byte_im
 
