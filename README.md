@@ -1,4 +1,4 @@
-# streamlit_app
+# Image Compression
 A streamlit application for image compression using kMeans algorithm.
 The user can upload an image and the algorithm will compress the image preserving the most important colors and give the opportunity to download the compressed image. The program also shows the top 3 most dominant colors for every image you upload. Multiprocessing was used to speed up the computations.
 
