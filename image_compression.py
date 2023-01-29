@@ -15,9 +15,9 @@ from sys import getsizeof
 
 def main():
     st.set_page_config(layout='wide')
-    st.title('Image Compression')
+    st.markdown("<h1 style='text-align: center;'>Image Compression</h1>", unsafe_allow_html=True)
     st.write('This tool compresses your image in size, preserving the most important colors\
-    using k-Means algorithm.')
+    using k-Means algorithm. It also shows you k most dominant colors in your image.')
 
     img_file_buffer = st.file_uploader('Upload an image', type=['png','jpg'])
 
@@ -27,6 +27,7 @@ def main():
         compressed_bytes = {}   # byte representation of the ndarray images for downloading
         compressed_sizes = {}
         compressed_percents = {}
+        centroids_dict = {} # Dominant colors for every k in kMeans
         
         # Keeping the original image size for calculating the percentage benefit
         initial_size = getsizeof(img_file_buffer)
@@ -74,8 +75,8 @@ def main():
 
         # Running the algorithm
         start = time()
-        start_k = 2
-        end_k = 12
+        start_k = 3
+        end_k = 13
         diff = end_k - start_k
         k = start_k
 
@@ -86,9 +87,9 @@ def main():
         image_shape_lst = [image_shape] * diff
         args = (*zip(resized_image_lst,image_type_lst,image_shape_lst,k_list),)
 
-        results = list(compressHelper(args))
+        results = list(compress_helper(args))
 
-        for compressed_image, byte_im in results:
+        for compressed_image, byte_im, centroids in results:
             #percent_complete = (k - 1) / (end_k - 2)  
             #compressed_image, byte_im = compress(resized_image, image_type, image_shape, k)
             current_size = getsizeof(byte_im)
@@ -97,6 +98,7 @@ def main():
             compressed_bytes[k] = byte_im
             compressed_sizes[k] = current_size / 1000 
             compressed_percents[k] = f'{((current_size - initial_size) * 100) / initial_size:.2f}%'
+            centroids_dict[k] = centroids
 
             #placeholder.text(f'Progress: {int(percent_complete * 100)}/100')
             k += 1
@@ -108,18 +110,18 @@ def main():
         st.sidebar.write('Compressed size dictionary: ', compressed_percents)
 
         st.header('Original vs Compressed for different values of k')
-        preferred_k = st.slider('Choose the k in kMeans: ', 2, end_k - 1, end_k - 1)
+        preferred_k = st.slider('Choose the k in kMeans: ', start_k, end_k - 1, end_k - 1)
 
         # Displaying the original and compressed images side by side
         col1, col2 = st.columns(2)
 
         with col1:
-            st.subheader('Original Image')
-            st.image(image, caption='Original', clamp=True)
+            st.markdown("<h4 style='text-align: center;'>Original Image</h1>", unsafe_allow_html=True)
+            st.image(image, clamp=True)
 
         with col2:
-            st.subheader('Compressed Image')
-            st.image(compressed_images[preferred_k], caption='Compressed', clamp=True)
+            st.markdown("<h4 style='text-align: center;'>Compressed Image</h1>", unsafe_allow_html=True)
+            st.image(compressed_images[preferred_k], clamp=True)
 
         # Download button for user
         btn = st.download_button(
@@ -128,14 +130,35 @@ def main():
             file_name = f'{name}_{preferred_k}.{image_type}',
             mime = f'image/{image_type}'
         )
+        
+        # Showing 3 most dominant colors
+        current_centroids = centroids_dict[preferred_k]
+        width,height = 100, 100
+        
+        color_1 = np.full((height, width, 3),current_centroids[0])
+        color_2 = np.full((height, width, 3),current_centroids[1]) 
+        color_3 = np.full((height, width, 3),current_centroids[2]) 
+        
+        st.markdown("<h3 style='text-align: center;'>3 dominant colors</h1>", unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns(3) 
+        
+        with col1:
+            st.image(color_1)
+        with col2:
+            st.image(color_2)
+        with col3:
+            st.image(color_3)        
 
         sizes = pd.Series(compressed_sizes)
 
-        # Plotting the graph for different values of k
+        # Plotting the graph for different values of k  
+        st.write('')
+        st.markdown("<h3 style='text-align: center;'>A graph of size change dynamics</h1>", unsafe_allow_html=True)
         plot_graph(sizes, initial_size, start_k, end_k)
 
 @st.cache(show_spinner=False)
-def compressHelper(args):
+def compress_helper(args):
     """Helper of compress to handle caching problems arising from direct call of compress
     
     Args:
@@ -195,7 +218,7 @@ def compress(resized_image, image_type, initial_image_shape, k):
     byte_im = buf.getvalue()
     print('kMeans K=', k)
 
-    return compressed_image, byte_im
+    return compressed_image, byte_im, centroids
 
 def plot_graph(sizes, initial_size, start_k, end_k):
     """Plots the graph of sizes per different numbers of clusters
