@@ -1,6 +1,6 @@
 # Image Compression using K-Means Algorithm
 
-This Streamlit application allows users to compress images using the K-Means algorithm. After uploading an image, the algorithm compresses it while preserving the most important colors. The user can then download the compressed image.
+This Streamlit application allows users to compress images and uses the K-Means algorithm for it. After uploading an image, the algorithm compresses it while preserving the most important colors. The user can then download the compressed image.
 
 In addition, the application displays the top three dominant colors for every image uploaded. Multiprocessing has been implemented to speed up the computations.
 
