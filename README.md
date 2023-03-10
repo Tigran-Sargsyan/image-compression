@@ -13,8 +13,8 @@ The number of clusters (K) determines the level of compression. A higher value o
 
 The top three dominant colors for every image are also displayed using the K-Means algorithm.
 
-Multiprocessing has been implemented to speed up the computations. The application divides the image into smaller segments and compresses them in parallel using multiple CPU cores.
+Multiprocessing has been implemented to speed up the computations. The application compresses the image for different number of clusters in parallel using multiple CPU cores.
 
 
-Here you can use the streamlit app via this link directly    
+Here you can use the streamlit app via this link directly.
 https://tigran-sargsyan-streamlit-app-image-compression-au8hiv.streamlit.app/
