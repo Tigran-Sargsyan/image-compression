@@ -15,7 +15,13 @@ The top three dominant colors for every image are also displayed using the K-Mea
 
 Multiprocessing has been implemented to speed up the computations. The application compresses the image for different number of clusters in parallel using multiple CPU cores.
 
+## Demo video and deployed streamlit app
+
+Here you can watch the demo video.
+
+https://youtu.be/ehF-1YXvFUY
 
 Here you can use the streamlit app via this link directly.
 
 https://tigran-sargsyan-streamlit-app-image-compression-au8hiv.streamlit.app/
+
