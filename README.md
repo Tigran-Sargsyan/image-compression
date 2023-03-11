@@ -17,4 +17,5 @@ Multiprocessing has been implemented to speed up the computations. The applicati
 
 
 Here you can use the streamlit app via this link directly.
+
 https://tigran-sargsyan-streamlit-app-image-compression-au8hiv.streamlit.app/
